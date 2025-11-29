@@ -1,0 +1,41 @@
+from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QLabel, QHBoxLayout
+from PyQt6.QtGui import QIcon, QFont
+import sys
+import os
+
+
+class Window(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        BASE_DIR = os.path.dirname(__file__)
+        IMG_PATH = os.path.join(BASE_DIR, "images/python.png")
+
+        self.setGeometry(200, 200, 700, 400)
+        # signal and slot mechanism in PyQt == Event Handling
+        self.setWindowTitle("PyQT Event Handling")
+        self.setWindowIcon(QIcon(IMG_PATH))
+
+        self.create_widget()
+
+    def create_widget(self):
+        hbox = QHBoxLayout()
+        btn = QPushButton("Change Text")
+        btn.clicked.connect(self.clicked_btn)
+
+        self.label = QLabel("Default Text")
+
+        hbox.addWidget(btn)
+        hbox.addWidget(self.label)
+
+        self.setLayout(hbox)
+        
+    def clicked_btn(self):
+        self.label.setText("Another Text")
+        self.label.setFont(QFont("Times", 15))
+        self.label.setStyleSheet("color:red")
+
+app = QApplication(sys.argv)
+window = Window()
+window.show()
+sys.exit(app.exec())

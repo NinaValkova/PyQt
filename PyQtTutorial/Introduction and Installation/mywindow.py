@@ -5,6 +5,7 @@ import sys
 # creating the object of the QApplication
 app = QApplication(sys.argv)
 
+# base class of all user interface-it recives mouse, keyboard events
 window = QWidget()
 
 window.show()
