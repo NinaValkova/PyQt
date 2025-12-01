@@ -32,6 +32,7 @@ class Worker(QRunnable):
     def run(self):
         time.sleep(2)
         result = self.worker_id * 10
+        #This means:“I am done.Send the result to the main thread now
         self.signals.result_ready.emit(result)   
 
 
@@ -66,7 +67,12 @@ class MainWindow(QWidget):
 
         for i in range(1, 6):
             worker = Worker(i, signals)
+            # When result_ready is emitted in the future, call collect_result().
+            # This line does NOT run collect_result().
+            # It does NOT emit any signal.
+            # It does NOT start any worker.
             signals.result_ready.connect(self.collect_result)
+            # Qt, please take this worker task and run its run() method in a background thread from the pool
             self.thread_pool.start(worker)
 
     # method is called every time a worker thread finishes and emits
@@ -88,3 +94,53 @@ if __name__ == "__main__":
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
+
+# The worker thread emits:
+# result_ready.emit(30)
+
+# Step 2
+# Qt looks for any connected slot:
+# signals.result_ready.connect(self.collect_result)
+
+# Step 3
+# Qt automatically calls:
+# self.collect_result(30)
+# in the main GUI thread
+
+
+# ThreadPool runs multiple workers concurrently
+# All workers run IN PARALLEL (as long as thread pool has free threads).
+# Example:
+# Worker 1 starts immediately
+# Worker 2 also starts at the same time
+# Worker 3 may start 1 ms later
+# Worker 4 waits if no thread is free
+# Worker 5 may start after Worker 3 finishes
+# Order is NOT guaranteed.
+
+# Visual Timeline (THIS IS EXACTLY WHAT HAPPENS)
+# for i in range(5 workers):
+# 1. connect signal → collect_result
+# 2. add worker to thread_pool queue
+
+# THREADPOOL begins running them:
+# Worker 3 starts
+# Worker 1 starts
+# Worker 2 waits
+# Worker 4 starts
+# Worker 5 waits
+
+# Worker 4 finishes → emit signal → collect_result(40)
+# Worker 1 finishes → emit signal → collect_result(10)
+# Worker 3 finishes → emit signal → collect_result(30)
+# Worker 2 finishes → emit signal → collect_result(20)
+# Worker 5 starts
+# Worker 5 finishes → emit signal → collect_result(50)
+
+# activeThreadCount == 0 → enable button
+
+# Operation	What it does	When it happens
+# .connect()	Registers what function to call later	Before thread starts
+# .start(worker)	Schedules worker to run	Immediately after connect
+# .emit(result)	Sends signal → calls collect_result()	When worker finishes
+# collect_result() runs ONLY when the signal is emitted — NOT when it is connected.
